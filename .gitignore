@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Client data never goes into git
+data/
+*.pdf
+!fra/report/static/*.pdf
+.streamlit/secrets.toml
