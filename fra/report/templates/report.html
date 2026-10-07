@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Funding Readiness Audit — {{ it.legal_name }}</title>
+<link rel="stylesheet" href="report.css">
+</head>
+<body>
+{% macro statuspill(s) %}<span class="pill {{ pill(s) }}">{{ s.value if s.value is defined else s }}</span>{% endmacro %}
+{% macro opener(num, title, lede=None, part=None) %}
+<header class="section">
+  <div class="eyebrow">{% if part %}{{ part }} · {% endif %}{% if num %}Section {{ '%02d' % num }}{% else %}&nbsp;{% endif %}</div>
+  <h2 id="s{{ num or title|replace(' ', '') }}">{{ title }}</h2>
+  <div class="rule"></div>
+  {% if lede %}<p class="lede">{{ lede }}</p>{% endif %}
+</header>
+{% endmacro %}
+
+<div class="hdr">
+  <div class="wordmark"><span class="bars"><i></i><i></i><i></i></span><span>Tradeline<br>Associates Inc.</span></div>
+  <div class="contact"><div class="web">Tradelineassociates.com</div>info@tradelineassociates.com<br>P: (818) 860-4465 • F: (818) 334-6225</div>
+</div>
+<div class="ftr">
+  <div>Funding Readiness Audit • {{ it.legal_name }} • {{ meta.report_number }} {{ rev_label }}{% if not final %} {{ stage }}{% endif %} • {{ report_date|d('%B %d, %Y') }} • <span class="pg"></span></div>
+  <div class="disc">{{ disclaimer }}</div>
+  <div class="band">TRADELINE ASSOCIATES INC.</div>
+</div>
+{% if not final %}<div class="watermark">{{ stage }}</div>{% endif %}
+
+<!-- ============================== COVER ============================== -->
+<section class="cover">
+  <div class="eyebrow" style="margin-top:8pt">Funding Readiness Series</div>
+  <h1>Funding Readiness Audit</h1>
+  <div class="rule" style="height:2.5pt"></div>
+  <p class="muted" style="font-size:10pt">Lender Preparation &amp; Fundability Diagnostic for {{ it.legal_name }}</p>
+  <p>This audit reviews the business as a lender will see it — legal and identity records, commercial credit bureaus, public records, banking and financial documents, the personal guarantor file, and funding product fit — and identifies what already passes, what needs improvement, what requires action, and what remains pending before lender submission.</p>
+  <div class="callout info"><b>HOW TO USE THIS REPORT:</b> Start with the one-page <b>At a Glance</b> summary. Then work the sections in order: Section 02 names the three actions that unlock everything else; Sections 06–09 are your business identity and the 20-point audit; Sections 10–13 cover the bureaus, banking, the guarantor and product fit; Sections 14–15 are the roadmap and the tracker you work from. Every finding includes an <b>In plain English</b> line, and unfamiliar terms are defined in the Glossary (Appendix A).</div>
+  <div class="sequence"><div class="eyebrow">The sequence</div>
+    <div class="steps"><span class="cur">DISCOVER</span> → <span class="cur">DIAGNOSE</span> → CORRECT → VERIFY → STRENGTHEN → REASSESS → FUND</div></div>
+  <h3 style="border:0;padding:0">Report Details</h3>
+  <table class="kv">
+    <tr><td>Prepared for</td><td><b>{{ owner.full_name if owner else '' }}</b>{% if owner and owner.title %} — {{ owner.title }}{% endif %}{% if owner and owner.ownership_pct %} &amp; {{ owner.ownership_pct|int }}% Owner{% endif %}</td></tr>
+    <tr><td>Business entity</td><td><b>{{ it.legal_name }}</b>{% if it.formation_state %} — {{ it.formation_state }}{% endif %} {{ it.entity_type|replace('“Limited Liability Company”','')|trim }}{% if it.formation_date %}, formed {{ it.formation_date|d('%B %d, %Y') }}{% endif %}</td></tr>
+    <tr><td>Report number</td><td>{{ meta.report_number }} · {{ rev_label }} — {{ stage }}</td></tr>
+    <tr><td>Report date</td><td>{{ report_date|d('%B %d, %Y') }}</td></tr>
+    <tr><td>Report stage</td><td>Current Audit · {% if r.composite.issued %}Composite score issued{% else %}Reassessment Recommended After Corrections{% endif %}</td></tr>
+    <tr><td>Funding objective</td><td>{% if it.funding.amount_requested %}{% if it.funding.amount_minimum and it.funding.amount_minimum != it.funding.amount_requested %}{{ it.funding.amount_minimum|money }} – {% endif %}{{ it.funding.amount_requested|money }}{% if it.funding.timeline %}, needed in {{ it.funding.timeline }}{% endif %}{% else %}Not yet stated{% endif %}</td></tr>
+    <tr><td>Overall assessment</td><td class="assessment">{{ narr.cover_assessment }}</td></tr>
+  </table>
+  <div class="callout navy"><b>“Underwriting before the underwriting.”</b> This audit finds what a lender would find — before the lender finds it. It is a fundability and lender-preparation analysis, not a loan application, commitment, or promise of financing.</div>
+  <p class="small muted">CONFIDENTIAL · Prepared exclusively for the named client and their authorized advisors · Tradeline Associates Inc.</p>
+</section>
+
+<!-- ============================== AT A GLANCE ============================== -->
+<section class="sec">
+  {{ opener(None, 'Your Audit at a Glance', 'The whole report on one page. If you read nothing else, read this.') }}
+  <div class="glance-grid">
+    <div>
+      {% if r.composite.issued %}
+      <div class="badge scored"><span class="big">{{ r.composite.score }}</span>FUNDING READINESS SCORE · {{ r.composite.tier|upper }}</div>
+      {% else %}
+      <div class="badge"><span class="big">WITHHELD</span>COMPOSITE SCORE ISSUED AT REASSESSMENT</div>
+      <p class="small muted" style="margin-top:4pt">We don't publish a single score on an incomplete file, because it would misrepresent your business. Every item is still rated below.</p>
+      {% endif %}
+      <table class="dist">
+        <tr>{% for s, cls, label in [(Status.PASS,'pass','Pass'),(Status.NI,'ni','Needs improvement'),(Status.AR,'ar','Action required'),(Status.PEND,'pend','Pending'),(Status.NA,'na','N/A')] %}<td class="{{ cls }}"><span class="n">{{ r.status_counts.get(s.value, 0) }}</span><span class="t">{{ label }}</span></td>{% endfor %}</tr>
+      </table>
+      <div class="small muted">The 20-point business compliance audit (personal credit is not part of these 20 points).</div>
+    </div>
+    <div>
+      <div class="eyebrow">Do these first</div>
+      <div class="actions-mini">
+      {% for a in r.first_three %}<div class="row"><div class="n">{{ a.priority }}</div><div><b>{{ a.item }}</b><br><span class="small muted">{{ a.ref }}</span></div></div>{% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="eyebrow" style="margin-top:8pt">What already works in your favor</div>
+  <div class="tiles">
+    {% for m in r.strengths[:3] %}<div class="tile"><div class="v">{{ m.value }}</div><div class="l">{{ m.label }}</div><div class="s">{{ m.sub }}</div></div>{% endfor %}
+  </div>
+  <div class="eyebrow">Your roadmap</div>
+  {{ roadmap|safe }}
+  <div class="callout plain"><div class="eyebrow">What this means for you</div>{{ narr.glance_meaning }}</div>
+</section>
+
+<!-- ============================== CONTENTS ============================== -->
+<section class="sec">
+  {{ opener(None, 'Contents') }}
+  <table class="toc">
+    <tr><td><a href="#s1">01 · How to Read &amp; Use Your FRA</a></td></tr>
+    <tr><td><a href="#s2">02 · Your First Three Actions</a></td></tr>
+    <tr><td><a href="#s3">03 · Key Funding Strengths</a></td></tr>
+    <tr><td><a href="#s4">04 · Overall Assessment &amp; Scorecard</a></td></tr>
+    <tr><td><a href="#s5">05 · Priority Risk &amp; Correction Flags</a></td></tr>
+    <tr><td><a href="#s6">06 · Master Business Address Decision</a></td></tr>
+    <tr><td><a href="#s7">07 · Master Business Identity Matrix</a></td></tr>
+    <tr><td class="part">PART I — 20-POINT BUSINESS COMPLIANCE AUDIT</td></tr>
+    <tr><td><a href="#s8">08 · 20-Point Business Compliance Scorecard</a></td></tr>
+    <tr><td><a href="#s9">09 · 20-Point Audit — Detailed Findings</a></td></tr>
+    <tr><td class="part">PART II — FUNDING READINESS ANALYSIS</td></tr>
+    <tr><td><a href="#s10">10 · Commercial Credit Bureau Analysis</a></td></tr>
+    <tr><td><a href="#s11">11 · Banking &amp; Financial Analysis</a></td></tr>
+    <tr><td><a href="#s12">12 · Personal Guarantor Snapshot</a></td></tr>
+    <tr><td><a href="#s13">13 · Funding Objective &amp; Product Fit</a></td></tr>
+    <tr><td><a href="#s14">14 · Corrective Action Roadmap</a></td></tr>
+    <tr><td><a href="#s15">15 · Funding Readiness Action Center</a></td></tr>
+    <tr><td><a href="#s16">16 · Resource Directory</a></td></tr>
+    <tr><td><a href="#s17">17 · Documents Reviewed</a></td></tr>
+    <tr><td><a href="#s18">18 · Current Audit Conclusion</a></td></tr>
+    <tr><td class="part">APPENDICES</td></tr>
+    <tr><td><a href="#sAppendixA—Glossary">A · Glossary</a></td></tr>
+    <tr><td><a href="#sAppendixB—OpenReviewItems&amp;Assumptions">B · Open Review Items &amp; Assumptions</a></td></tr>
+    <tr><td><a href="#sAppendixC—Revision&amp;ChangeLog">C · Revision &amp; Change Log</a></td></tr>
+    <tr><td><a href="#sAppendixD—Scope,Limitations&amp;Disclosures">D · Scope, Limitations &amp; Disclosures</a></td></tr>
+  </table>
+</section>
+
+<!-- ============================== 01 ============================== -->
+<section class="sec">
+  {{ opener(1, 'How to Read & Use Your FRA', 'This report is a working document, not a verdict. Read the strengths, then the three actions that unlock everything else, then work the tracker in order.') }}
+  <h3>Status system</h3>
+  <table>
+    <tr><td style="width:1.7in">{{ statuspill(Status.PASS) }}</td><td>Satisfactory for funding preparation based on the documents reviewed. No corrective action needed.</td></tr>
+    <tr><td>{{ statuspill(Status.NI) }}</td><td>Present and working, but weak enough to affect the underwriting outcome or your limits. Improve before applying.</td></tr>
+    <tr><td>{{ statuspill(Status.AR) }}</td><td>A material issue is confirmed and should be corrected before applications are submitted.</td></tr>
+    <tr><td>{{ statuspill(Status.PEND) }}</td><td>Can't be rated from the documents available yet. <b>Not a negative finding.</b> If a source returned too little to score, the finding reads INSUFFICIENT DATA.</td></tr>
+    <tr><td>{{ statuspill(Status.NA) }}</td><td>Does not apply to this business's structure or operations.</td></tr>
+  </table>
+  <h3>How to read a finding card</h3>
+  <table class="kv">
+    <tr><td>In plain English</td><td>One sentence on what the finding means for you — read this first.</td></tr>
+    <tr><td>What we found</td><td>The facts from your documents and bureau files, with the source named.</td></tr>
+    <tr><td>Why it matters</td><td>How a lender uses this item.</td></tr>
+    <tr><td>Recommended correction</td><td>What needs to happen. Where two documents disagree, we state the disagreement rather than choose a side.</td></tr>
+    <tr><td>Where / how to fix</td><td>The official channel (also listed in Section 16).</td></tr>
+    <tr><td>Pass standard</td><td>What "done" looks like for this point.</td></tr>
+  </table>
+  <p class="small muted">Scope, limitations and disclosures are in Appendix D. Unfamiliar terms are defined in Appendix A.</p>
+</section>
+
+<!-- ============================== 02 ============================== -->
+<section class="sec">
+  {{ opener(2, 'Your First Three Actions', 'These items gate everything else. Nothing else should be started until these are moving.') }}
+  <div class="first3">
+    <div class="eyebrow">Your first three actions</div>
+    {% for a in r.first_three %}
+    <div class="act"><div class="n">{{ a.priority }}</div><div><div class="t">{{ a.item }}</div><div class="d">{{ mask(narr.get('action_' ~ a.priority, a.what)) }}</div><div class="p">{{ a.ref }}</div></div></div>
+    {% else %}<p>No gating items were identified. Confirm the pending items below.</p>{% endfor %}
+  </div>
+  {% if r.secondary %}
+  <h3>Secondary open items — important, but not gating</h3>
+  <table class="zebra">
+    <thead><tr><th>Item</th><th style="width:1.55in">Status</th><th>Note</th></tr></thead>
+    <tbody>{% for item, st, note in r.secondary %}<tr><td><b>{{ item }}</b></td><td>{{ statuspill(st) }}</td><td>{{ mask(note) }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% endif %}
+</section>
+
+<!-- ============================== 03 ============================== -->
+<section class="sec">
+  {{ opener(3, 'Key Funding Strengths', 'This is the part of your file a lender will like. Lead with these facts in any lender conversation.') }}
+  <div class="tiles">
+    {% for m in r.strengths %}<div class="tile"><div class="v">{{ m.value }}</div><div class="l">{{ m.label }}</div><div class="s">{{ m.sub }}</div></div>{% endfor %}
+  </div>
+  <div class="callout story"><div class="eyebrow">The central underwriting story</div>{{ mask(narr.central_story) }}</div>
+</section>
+
+<!-- ============================== 04 ============================== -->
+<section class="sec">
+  {{ opener(4, 'Overall Assessment & Scorecard', 'How a lender would rate each of the five areas of your file.') }}
+  <div class="areas">
+    {% for a in r.areas %}
+    <div class="area{% if loop.last %} full{% endif %}"><div class="nm">{{ a.name }}</div>{{ statuspill(a.status) }}<p>{{ mask(narr.get('area_' ~ a.key, a.narrative)) }}</p></div>
+    {% endfor %}
+  </div>
+  <h3>20-point compliance scorecard — distribution</h3>
+  <table class="dist">
+    <tr>{% for s, cls, label in [(Status.PASS,'pass','Pass'),(Status.NI,'ni','Needs improvement'),(Status.AR,'ar','Action required'),(Status.PEND,'pend','Pending / need document'),(Status.NA,'na','N/A')] %}<td class="{{ cls }}"><span class="n">{{ r.status_counts.get(s.value, 0) }}</span><span class="t">{{ label }}</span></td>{% endfor %}</tr>
+  </table>
+  {% if r.composite.issued %}
+  <div class="callout story"><div class="eyebrow">Composite Funding Readiness Score</div><b style="font-size:16pt">{{ r.composite.score }} — {{ r.composite.tier }}</b><br>This score describes how ready the file is for lender submission. It is not an approval prediction; lenders use their own criteria.</div>
+  {% else %}
+  <div class="callout caution"><div class="eyebrow">Why the composite Funding Readiness Score is withheld</div>
+    TLA does not publish a composite score on an incomplete file, because doing so misrepresents the business in both directions. The score is issued at Reassessment once these are resolved:
+    <ol style="margin:4pt 0 0 14pt;padding:0">{% for u in r.composite.unlocks %}<li>{{ u }}</li>{% endfor %}</ol>
+  </div>
+  {% endif %}
+  {% if r.concentration %}
+  <h3>Where the weaknesses are concentrated</h3>
+  <table class="zebra">
+    <thead><tr><th>Concentration</th><th style="width:1.1in">Points</th><th>What it means</th></tr></thead>
+    <tbody>{% for g in r.concentration %}<tr><td><b>{{ g.name }}</b></td><td>{{ g.points|join(', ') }}</td><td>{{ g.meaning }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% endif %}
+</section>
+
+<!-- ============================== 05 ============================== -->
+<section class="sec">
+  {{ opener(5, 'Priority Risk & Correction Flags', 'Every open issue in one place, ordered by how much it affects underwriting — not by section.') }}
+  <table class="zebra">
+    <thead><tr><th style="width:0.3in">#</th><th>Issue</th><th style="width:1.5in">Status</th><th>Underwriting consequence</th><th style="width:0.7in">See</th></tr></thead>
+    <tbody>{% for f in r.flags %}<tr><td class="idx">{{ loop.index }}</td><td>{{ mask(f.title) }}</td><td>{{ statuspill(f.status) }}</td><td>{{ f.consequence }}</td><td class="small">{{ f.ref }}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+
+<!-- ============================== 06 ============================== -->
+<section class="sec">
+  {{ opener(6, 'Master Business Address Decision', 'One address drives most of the corrections in this report. This page shows the addresses in circulation and the decision you need to make.') }}
+  {% set cands = r.address_candidates|selectattr('kind','equalto','candidate')|list %}
+  {% set others = r.address_candidates|rejectattr('kind','equalto','candidate')|list %}
+  {% if meta.master_address_designation and not meta.master_address_designation.is_empty() %}
+  <div class="callout story"><div class="eyebrow">Master business address — designated by the client</div><b>{{ meta.master_address_designation.one_line() }}</b><br>Propagate this address using the checklist below, and keep proof (lease, utility or telecom bill in the legal name, dated within 90 days) in the funding file.</div>
+  {% elif cands|length >= 2 %}
+  <div class="callout caution"><div class="eyebrow">A decision is required</div>{{ cands|length }} active addresses appear on lender-facing records. <b>TLA does not decide the factual operating address; the client must select the legitimate, supportable lender-facing address and provide proof.</b></div>
+  {% else %}
+  <div class="callout info"><div class="eyebrow">No decision required</div>One address is in circulation on lender-facing records. Keep proof of it in the funding file.</div>
+  {% endif %}
+  <h3>Active lender-facing address candidates</h3>
+  <table class="zebra">
+    <thead><tr><th>Address</th><th>Appears on</th><th>Notes</th></tr></thead>
+    <tbody>{% for c in cands %}<tr><td><b>{{ c.address }}</b></td><td>{{ c.seen_on|join(', ') }}</td><td>{{ c.notes|join('; ') or '—' }}</td></tr>{% else %}<tr><td colspan="3" class="muted">No addresses on file yet.</td></tr>{% endfor %}</tbody>
+  </table>
+  {% if others %}
+  <h3>Bureau corrections and record-only addresses (not candidates)</h3>
+  <table class="zebra">
+    <thead><tr><th>Address</th><th>Appears on</th><th>Treatment</th></tr></thead>
+    <tbody>{% for c in others %}<tr><td>{{ c.address }}</td><td>{{ c.seen_on|join(', ') }}</td><td>{{ c.notes|join('; ') or c.kind|replace('_',' ')|capitalize }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% endif %}
+  <h3>Assess each candidate</h3>
+  <table class="kv">
+    <tr><td>Legitimate</td><td>The business actually operates there or has a right to use it.</td></tr>
+    <tr><td>Provable</td><td>You can produce a lease, deed, utility or telecom bill, or service agreement in the legal name, dated within 90 days.</td></tr>
+    <tr><td>Residential</td><td>Acceptable and truthful for a home-based business; some lenders treat a residence on a commercial file as a soft negative.</td></tr>
+    <tr><td>Mailbox / PO box</td><td>A PO box is never a physical address. A private mailbox (PMB) must be disclosed as such. Google Business Profile does not accept virtual offices or mailboxes.</td></tr>
+    <tr><td>Filings it triggers</td><td>IRS Form 8822-B only if the IRS record must change; state, bank and bureau updates as needed.</td></tr>
+  </table>
+  <h3>After you designate the address — propagation checklist</h3>
+  <ol style="margin:0 0 0 14pt;padding:0;font-size:8.6pt">
+    <li>IRS: Form 8822-B only if the IRS record differs (4–6 weeks).</li>
+    <li>Secretary of State: principal office / mailing address update.</li>
+    <li>Bank(s): account profile, statement address, beneficial-ownership certification, W-9.</li>
+    <li>Experian (BusinessCreditFacts), D&amp;B (D-U-N-S Manager), Equifax Commercial.</li>
+    <li>LexisNexis business file (once obtained).</li>
+    <li>411 / directory listing, then Google Business Profile.</li>
+    <li>Website footer, email signature, licenses, insurance, vendors.</li>
+    <li>Re-verify each bureau 30–45 days after submitting.</li>
+  </ol>
+</section>
+
+<!-- ============================== 07 ============================== -->
+<section class="sec matrix-page">
+  {{ opener(7, 'Master Business Identity Matrix', 'What each record holder believes about your business. Cells marked ≠ disagree with the controlling record and need correction.') }}
+  <table class="matrix">
+    <thead><tr><th style="width:0.95in">Data point</th>{% for s in r.matrix_sources %}<th>{{ s }}</th>{% endfor %}<th style="width:0.32in">Sev.</th></tr></thead>
+    <tbody>
+    {% for row in r.matrix %}
+    <tr><td class="fld">{{ row.label }}{% if row.controlling_source and row.controlling_source not in r.matrix_sources %}<br><span class="small muted">{{ row.controlling_value }} ({{ row.controlling_source }})</span>{% endif %}</td>
+      {% for s in r.matrix_sources %}{% set c = row.cells.get(s) %}
+        {% if c %}{% set cls = 'bad' if c.outcome in ['CONFLICT','UNDERSTATED'] or (c.outcome == 'BLANK' and row.severity in ['S1','S2']) else ('var' if c.outcome in ['VARIANT','BLANK'] else ('na' if c.outcome == 'NOT AVAILABLE' else '')) %}
+        <td class="{{ cls }}{% if c.outcome == 'CONTROLLING' %} ctl{% endif %}">{% if c.outcome == 'CONTROLLING' %}★ {% endif %}{% if row.field == 'ein' and c.value not in ['—','Blank'] %}{{ mask_id(c.value) }}{% elif row.field in ['website','email'] %}{{ c.value|replace('https://','')|replace('http://','')|replace('www.','') }}{% else %}{{ c.value }}{% endif %}</td>
+        {% else %}<td class="na">—</td>{% endif %}
+      {% endfor %}
+      <td><span class="sev {{ row.severity }}">{{ row.severity }}</span></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">★ = controlling record for that field · ≠ = disagrees with the controlling record · shaded gold = variant or blank · — = this source does not carry the field. Severity: S1 gating, S2 material, S3 minor. Full tax IDs are masked; only the last four digits are shown.</p>
+</section>
+
+<!-- ============================== 08 ============================== -->
+<section class="sec">
+  {{ opener(8, '20-Point Business Compliance Scorecard', 'This scorecard measures the business only. Personal credit is not a factor in any of the twenty points.', 'Part I') }}
+  <table class="zebra tight">
+    <thead><tr><th style="width:0.3in">#</th><th style="width:2.0in">Audit point</th><th style="width:1.55in">Status</th><th>One-line finding</th></tr></thead>
+    <tbody>{% for f in r.findings %}<tr><td class="idx">{{ f.number }}</td><td><b>{{ f.title }}</b></td><td>{{ statuspill(f.status) }}</td><td>{{ mask(narr.get('oneline_' ~ f.number, f.one_line)) }}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+
+<!-- ============================== 09 ============================== -->
+<section class="sec">
+  {{ opener(9, '20-Point Audit — Detailed Findings', 'Each point is fully described once, here. Passing and not-applicable points are shown in short form.', 'Part I') }}
+  {% for f in r.findings %}
+  {% set compact = f.status in [Status.PASS, Status.NA] %}
+  <div class="card {{ pill(f.status) }}{% if compact %} compact{% endif %}">
+    <div class="ch"><div class="ti"><span class="no">{{ '%02d' % f.number }}.</span>{{ f.title }}</div><div>{% if not compact %}<span class="chip">{{ effort(f.number) }}</span>{% endif %}{{ statuspill(f.status) }}</div></div>
+    <div class="plain"><b>IN PLAIN ENGLISH</b>{{ narr.get('plain_' ~ f.number, f.plain) }}</div>
+    <table>
+      <tr><td class="lbl">What this is</td><td>{{ f.what_it_is }} <span class="muted">{{ points[f.number].lender }}</span></td></tr>
+      <tr><td class="lbl">What we found</td><td>{{ mask(narr.get('found_' ~ f.number, f.found)) }}</td></tr>
+      {% if not compact %}
+      <tr><td class="lbl">Why it matters</td><td>{{ f.why }}</td></tr>
+      <tr><td class="lbl">Recommended correction</td><td>{{ mask(narr.get('correction_' ~ f.number, f.correction)) }}</td></tr>
+      <tr><td class="lbl">Where / how to fix</td><td>{{ f.where_fix }}</td></tr>
+      {% endif %}
+      <tr><td class="lbl ps">Pass standard</td><td>{{ f.pass_standard }}</td></tr>
+    </table>
+    {% if f.sources %}<div class="src">Sources: {{ f.sources|join(' · ') }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+<!-- ============================== 10 ============================== -->
+<section class="sec">
+  {{ opener(10, 'Commercial Credit Bureau Analysis', 'Each bureau is analyzed separately. They do not share data, and a correction at one does not reach the others.', 'Part II') }}
+  {% for c in r.bureau_cards %}
+  <div class="bcard">
+    <div class="bh"><div><span class="nm">{{ c.bureau }}</span> <span class="small muted">{% if c.file_id %}File {{ c.file_id }} · {% endif %}{% if c.report_date %}Report date {{ c.report_date|d }}{% endif %}</span></div>{{ statuspill(c.status) }}</div>
+    <div class="tiles {{ 'five' if c.metrics|length >= 5 else ('four' if c.metrics|length == 4 else '') }}">
+      {% for m in c.metrics[:5] %}<div class="tile"><div class="v">{{ m.value }}</div><div class="l">{{ m.label }}</div>{% if m.sub %}<div class="s">{{ m.sub }}</div>{% endif %}</div>{% endfor %}
+    </div>
+    {% if c.identity_rows %}
+    <table class="zebra">
+      <thead><tr><th>Field</th><th>Bureau reports</th><th style="width:1.3in">TLA assessment</th></tr></thead>
+      <tbody>{% for fld, shown, a in c.identity_rows %}<tr><td>{{ fld }}</td><td>{{ shown }}</td><td><b style="color:{{ '#1F7A35' if a in ['MATCH','FORMAT VARIANT'] else '#C2571A' }}">{{ a }}</b></td></tr>{% endfor %}</tbody>
+    </table>
+    {% endif %}
+    {% if c.corrections %}<div class="eyebrow">Corrections required</div><ul>{% for x in c.corrections %}<li>{{ mask(x) }}</li>{% endfor %}</ul>{% endif %}
+    {% if c.clean %}<p class="small"><b>Clean:</b> {{ c.clean|join('; ') }}.</p>{% endif %}
+    {% if c.channel %}<p class="small"><b>Channel:</b> {{ c.channel }}</p>{% endif %}
+    <div class="callout plain" style="margin-bottom:0"><div class="eyebrow">In plain English</div>{{ c.plain }}</div>
+  </div>
+  {% endfor %}
+  <div class="callout key"><div class="eyebrow">Funding implications</div>{{ narr.funding_implications }}</div>
+</section>
+
+<!-- ============================== 11 ============================== -->
+<section class="sec">
+  {{ opener(11, 'Banking & Financial Analysis', 'Your statements, returns and financial documents — what lenders will compare against each other.', 'Part II') }}
+  {% set fin = case.financials %}
+  <div class="tiles four">
+    {% for t in fin.tax_returns|sort(attribute='year') %}<div class="tile"><div class="v">{{ t.gross_receipts|money }}</div><div class="l">{{ t.year }} revenue ({{ t.form }})</div><div class="s">Net {{ t.net_income|money }}</div></div>{% endfor %}
+    {% if fin.pnl_revenue %}<div class="tile"><div class="v">{{ fin.pnl_revenue|money }}</div><div class="l">YTD revenue</div><div class="s">Through {{ fin.pnl_period_end|d }}</div></div>{% endif %}
+    {% if it.avg_30day_balance %}<div class="tile"><div class="v">{{ it.avg_30day_balance|money }}</div><div class="l">Avg 30-day balance</div><div class="s">Client-reported</div></div>{% endif %}
+  </div>
+  <h3>Bank statements</h3>
+  {% if fin.bank_months %}
+  <table class="zebra"><thead><tr><th>Month</th><th>Bank</th><th class="num">Deposits</th><th class="num">Avg daily balance</th><th class="num">NSF</th><th class="num">Negative days</th></tr></thead>
+  <tbody>{% for m in fin.bank_months %}<tr><td>{{ m.month }}</td><td>{{ m.bank }}</td><td class="num">{{ m.deposits|money }}</td><td class="num">{{ m.avg_daily_balance|money }}</td><td class="num">{{ m.nsf_count }}</td><td class="num">{{ m.negative_days }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}
+  <div class="callout caution"><div class="eyebrow">Outstanding</div>Three consecutive months of complete business bank statements (six preferred) have not yet been provided. Cash-flow lenders cannot evaluate the file without them.</div>
+  {% endif %}
+  <h3>Business debt schedule</h3>
+  <table class="zebra"><thead><tr><th>Lender</th><th>Type</th><th class="num">Balance</th><th class="num">Payment</th><th>Secured</th></tr></thead>
+  <tbody>{% for d in it.debts %}<tr><td>{{ d.lender }}</td><td>{{ d.kind }}</td><td class="num">{{ d.balance|money }}</td><td class="num">{{ d.payment|money }} / {{ d.frequency }}</td><td>{{ 'Yes' if d.secured else ('No' if d.secured == false else '—') }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No business debt listed.{% if it.total_business_debt %} Intake total: {{ it.total_business_debt|money }} — itemize it.{% endif %}</td></tr>{% endfor %}</tbody></table>
+  {% if fin.consistency_notes %}
+  <h3>Document consistency</h3>
+  <table class="zebra"><thead><tr><th>Item</th><th style="width:1.55in">Status</th></tr></thead>
+  <tbody>{% for n in fin.consistency_notes %}<tr><td>{{ n }}</td><td>{{ statuspill(Status.NI) }}</td></tr>{% endfor %}</tbody></table>
+  <p class="small muted">TLA identifies discrepancies between lender-facing documents only. The client's financial professional should confirm which figures are accurate before lender submission. TLA does not perform accounting reconciliation.</p>
+  {% endif %}
+</section>
+
+<!-- ============================== 12 ============================== -->
+<section class="sec">
+  {{ opener(12, 'Personal Guarantor Snapshot', 'Most business financing requires the owner\'s personal guarantee, so lenders review your personal credit too. It is kept separate from the 20 business points.', 'Part II') }}
+  {% set g = r.guarantor %}
+  {% if g %}
+  <div class="tiles four">
+    {% for b, v, m in g.scores %}<div class="tile"><div class="v">{{ v }}</div><div class="l">{{ b }}</div><div class="s">{{ m }}{% if g.report_date %} · {{ g.report_date|d }}{% endif %}</div></div>{% endfor %}
+    <div class="tile"><div class="v">{{ g.util_overall|pct }}</div><div class="l">Revolving utilization</div><div class="s">Primary accounts</div></div>
+  </div>
+  <p class="small muted">Scores are shown with the model, source and date they came from. Lenders may use different score versions.</p>
+  {{ statuspill(g.status) }} <b>{{ g.one_line }}.</b>
+  <table class="zebra" style="margin-top:6pt">
+    <thead><tr><th>Factor</th><th>Your file</th><th>What lenders look for</th></tr></thead>
+    <tbody>
+      <tr><td>Middle FICO score</td><td><b>{{ g.mid_score or '—' }}</b>{% if g.bureau_spread %} (spread {{ g.bureau_spread }} pts){% endif %}</td><td>680+ for most business products; 720+ for the best card and bank terms</td></tr>
+      <tr><td>Revolving utilization</td><td><b>{{ g.util_overall|pct }}</b>; highest single card {{ g.util_max_card|pct(0) }}</td><td>Under 10% is excellent; over 30% starts to hurt</td></tr>
+      <tr><td>Highest primary card limit</td><td><b>{{ g.highest_limit|money }}</b></td><td>Card issuers anchor new limits on it</td></tr>
+      <tr><td>Primary revolving accounts</td><td><b>{{ g.n_primary_revolvers }}</b></td><td>3 or more</td></tr>
+      <tr><td>Oldest account · average age</td><td><b>{{ (g.oldest_months // 12) if g.oldest_months else '—' }} yrs · {{ (g.aaoa_months // 12) if g.aaoa_months else '—' }} yrs</b></td><td>Longer is better</td></tr>
+      <tr><td>Hard inquiries (6 / 12 months)</td><td>{% for b in g.inquiries_6m %}{{ b }} {{ g.inquiries_6m[b] }} / {{ g.inquiries_12m[b] }}{% if not loop.last %} · {% endif %}{% endfor %}</td><td>Few recent inquiries per bureau</td></tr>
+      <tr><td>New accounts (6 / 12 months)</td><td>{{ g.new_accounts_6m }} / {{ g.new_accounts_12m }}</td><td>Few new accounts before applying</td></tr>
+      <tr><td>Late payments (12 / 24 months)</td><td>{{ g.lates_12m }} / {{ g.lates_24m }}{% if g.recent_lates %}<br><span class="small">{{ g.recent_lates|join('; ') }}</span>{% endif %}</td><td>None in the last 12–24 months</td></tr>
+      <tr><td>Collections · public records</td><td>{{ g.collections }} · {{ g.public_records }}</td><td>None</td></tr>
+      {% if g.dti %}<tr><td>Debt-to-income (estimated)</td><td>{{ g.dti|pct(0) }}</td><td>Under about 45%</td></tr>{% endif %}
+    </tbody>
+  </table>
+  {% if g.flags %}
+  <div class="callout key"><div class="eyebrow">Items to address on the personal file</div><ul style="margin:0 0 0 14pt;padding:0">{% for x in g.flags %}<li>{{ x }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  <p class="small muted">You have the right to dispute information you believe is inaccurate or incomplete directly with the credit bureau or the company that reported it. Accurate information should not be disputed.</p>
+  {% else %}
+  <div class="callout caution"><div class="eyebrow">Outstanding</div>A current three-bureau FICO credit report has not been provided yet.</div>
+  {% endif %}
+</section>
+
+<!-- ============================== 13 ============================== -->
+<section class="sec">
+  {{ opener(13, 'Funding Objective & Product Fit', 'Directional positioning, not approval prediction. Ranges are indicative estimates based on typical lender criteria and are never added together.', 'Part II') }}
+  {% set fg = it.funding %}
+  <table class="kv">
+    <tr><td>Amount</td><td>{% if fg.amount_requested %}{% if fg.amount_minimum and fg.amount_minimum != fg.amount_requested %}{{ fg.amount_minimum|money }} – {% endif %}{{ fg.amount_requested|money }}{% else %}Not yet stated{% endif %}</td></tr>
+    <tr><td>Use of proceeds</td><td>{% for u in fg.uses %}{{ u.purpose }}{% if u.amount %} ({{ u.amount|money }}){% endif %}{% if not loop.last %}; {% endif %}{% else %}Not yet documented{% endfor %}</td></tr>
+    <tr><td>Timeline</td><td>{{ fg.timeline or '—' }}</td></tr>
+    <tr><td>Source of repayment</td><td>{{ fg.repayment_source or 'Not yet documented' }}</td></tr>
+    <tr><td>Personal guarantee</td><td>{{ 'Willing' if fg.willing_pg else ('Not willing' if fg.willing_pg == false else 'Not stated') }}</td></tr>
+  </table>
+  {% for p in products %}
+  <div class="pcard">
+    <div class="ph"><div><span class="pn">{{ p.name }}</span>{% if p.in_goal %} <span class="chip">In your goal</span>{% endif %}</div><span class="pill {{ pill(p.fit) }}">{{ p.fit }}</span></div>
+    {% if p.range_high %}<div class="range">Indicative range {{ p.range_low|money }} – {{ p.range_high|money }} · Confidence: {{ p.range_confidence or 'Medium' }}</div>{% endif %}
+    {% if p.earliest_ready %}<div class="small"><b>Earliest ready:</b> {{ p.earliest_ready|d('%B %Y') }}</div>{% endif %}
+    {% set why = narr.get('product_' ~ p.code) %}
+    {% if why %}<p class="small" style="margin:3pt 0">{{ why }}</p>{% endif %}
+    <ul>{% for x in p.reasons %}<li>{{ x }}</li>{% endfor %}{% for x in p.blockers %}<li><b>{{ x }}</b></li>{% endfor %}</ul>
+    {% if p.cost_note %}<p class="small muted" style="margin:3pt 0 0">{{ p.cost_note }}</p>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="callout key"><div class="eyebrow">Read this before any application</div>Apply in the order shown in Section 14: underwritten bank and SBA loans first, then online lenders, then business cards (at least 30 days after any loan funds), with merchant cash advances only as a last resort. Every application must be answered truthfully and completely, including all existing accounts and debts.</div>
+</section>
+
+<!-- ============================== 14 ============================== -->
+<section class="sec">
+  {{ opener(14, 'Corrective Action Roadmap', 'The order matters. Identity first, then the bureaus, then depth — and only then applications.') }}
+  {{ roadmap|safe }}
+  <h3>Phases</h3>
+  {% for ph, label in [(1,'Weeks 0–2: Identity and documents'),(2,'Weeks 2–6: Propagate corrections'),(3,'Weeks 6–12: Verify and build depth'),(4,'Months 3–6: Reassess and apply')] %}
+  {% set items = open_actions|selectattr('phase','equalto',ph)|list %}
+  {% if items %}
+  <p style="margin:6pt 0 2pt"><b style="color:#1B3A66">Phase {{ ph }} — {{ label }}</b></p>
+  <ul style="margin:0 0 4pt 14pt;padding:0;font-size:8.6pt">{% for a in items %}<li><b>{{ a.item }}</b> — {{ mask(a.what)|truncate(170) }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% endfor %}
+</section>
+
+<!-- ============================== 15 ============================== -->
+<section class="sec">
+  {{ opener(15, 'Funding Readiness Action Center', 'Your working tracker. Check items off as you complete them, and bring this page to your reassessment.') }}
+  <table class="kv">
+    <tr><td><span class="pill pend">Client action</span></td><td>You decide, obtain, confirm, provide, sign, pay down or communicate directly.</td></tr>
+    <tr><td><span class="pill third">Third-party</span></td><td>Needs a bank, bureau, accountant, lender, attorney or agency.</td></tr>
+    <tr><td><span class="pill open">Optional implementation</span></td><td>You can do it yourself, or TLA may be able to help under a separate engagement.</td></tr>
+    <tr><td><span class="pill done">Completed in FRA</span></td><td>Research or analysis already done in this audit.</td></tr>
+  </table>
+  {% set pct = (done_count / total_actions * 100)|round|int if total_actions else 0 %}
+  <p class="small"><b>{{ done_count }} of {{ total_actions }} items complete ({{ pct }}%)</b></p>
+  <div class="progress"><i style="width:{{ pct }}%"></i></div>
+  <table class="tracker zebra">
+    <colgroup><col style="width:0.24in"><col style="width:0.3in"><col style="width:2.85in"><col style="width:1.95in"><col style="width:1.05in"><col style="width:0.9in"></colgroup>
+    <thead><tr><th></th><th>Pri</th><th>Task</th><th>Done when</th><th>Path</th><th>Notes</th></tr></thead>
+    <tbody>{% for a in open_actions %}<tr><td><span class="box"></span></td><td class="idx">{{ loop.index }}</td><td><b>{{ a.item }}</b>{% if a.ref %} <span class="small muted">({{ a.ref }})</span>{% endif %}<br><span class="small">{{ mask(a.what)|truncate(190) }}</span></td><td class="small">{{ (a.done_when or '—')|truncate(150) }}</td><td><span class="pill {{ 'third' if 'THIRD' in a.path else ('open' if 'OPTIONAL' in a.path else 'pend') }}">{{ a.path|replace(' / THIRD-PARTY',' + 3rd party') }}</span></td><td class="notes"></td></tr>{% endfor %}</tbody>
+  </table>
+  {% if done_actions %}
+  <h3>Completed in this FRA</h3>
+  <ul style="margin:0 0 0 14pt;padding:0;font-size:8.6pt">{% for a in done_actions %}<li>☑ <b>{{ a.item }}</b> — {{ a.what }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+
+<!-- ============================== 16 ============================== -->
+<section class="sec">
+  {{ opener(16, 'Resource Directory', 'Every official correction channel used in this report, in one place. Verify contact details before use; they change.') }}
+  <table class="zebra">
+    <thead><tr><th>Resource</th><th style="width:0.9in">Points</th><th>Access</th></tr></thead>
+    <tbody>{% for name, pts, access in resources %}<tr><td><b>{{ name }}</b></td><td>{{ pts }}</td><td>{{ access }}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+
+<!-- ============================== 17 ============================== -->
+<section class="sec">
+  {{ opener(17, 'Documents Reviewed', 'The documents this audit relied on. Every finding traces back to one of these.') }}
+  <table class="zebra">
+    <thead><tr><th>Document type</th><th>File</th><th style="width:1in">Date</th></tr></thead>
+    <tbody>{% for t, fn, dt in r.documents_reviewed %}<tr><td>{{ t }}</td><td>{{ fn }}</td><td>{{ dt }}</td></tr>{% else %}<tr><td colspan="3" class="muted">No documents recorded yet.</td></tr>{% endfor %}
+    <tr><td>Client intake questionnaire</td><td>FRA intake</td><td>—</td></tr>
+    {% for k, f in case.research.items() if f.result != 'not_started' %}<tr><td>TLA research</td><td>{{ f.finding|truncate(110) }}</td><td>{{ f.checked_on|d }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================== 18 ============================== -->
+<section class="sec">
+  {{ opener(18, 'Current Audit Conclusion') }}
+  <p>{{ mask(narr.conclusion) }}</p>
+  <div class="sequence cover" style="background:#F1F3F6;border-left:4pt solid #B58A2E;padding:10pt;text-align:center;margin:12pt 0"><div class="eyebrow">You are here</div><b style="color:#1B3A66;letter-spacing:.08em">DISCOVER → DIAGNOSE → <span style="color:#B58A2E">CORRECT</span> → VERIFY → STRENGTHEN → REASSESS → FUND</b></div>
+  <div class="callout navy"><div class="eyebrow">Important</div>The Funding Readiness Audit is a fundability and lender-preparation analysis — not a loan application, commitment, or promise of financing. Final decisions are made by lenders and financial institutions.</div>
+</section>
+
+<!-- ============================== APPENDICES ============================== -->
+<section class="sec">
+  {{ opener(None, 'Appendix A — Glossary', 'Plain-English definitions of the terms used in this report.') }}
+  <div class="glossary">{% for t, d in glossary %}<div><b>{{ t }}</b> — {{ d }}</div>{% endfor %}</div>
+</section>
+
+<section class="sec">
+  {{ opener(None, 'Appendix B — Open Review Items & Assumptions') }}
+  {% if r.review_items %}
+  <table class="zebra"><thead><tr><th style="width:0.7in">ID</th><th>Item</th><th>Reason</th></tr></thead>
+  <tbody>{% for h in r.review_items %}<tr><td>{{ h.id }}</td><td><b>{{ h.title }}</b>{% if h.blocking %} <span class="pill ar">Pending review</span>{% endif %}</td><td>{{ mask(h.reason) }}</td></tr>{% endfor %}</tbody></table>
+  {% else %}<p>No open review items.</p>{% endif %}
+  <h3>Assumptions behind the indicative ranges</h3>
+  <ul style="margin:0 0 0 14pt;padding:0;font-size:8.6pt">
+    <li>Personal credit: middle FICO score{% if r.guarantor and r.guarantor.report_date %} from the report dated {{ r.guarantor.report_date|d }}{% endif %}.</li>
+    <li>Income: client-stated income reduced by 20% until documented.</li>
+    <li>Revenue: the lower of documented sources; self-reported deposits reduced by 20% until statements are provided.</li>
+    <li>Bank and SBA ranges: debt-service coverage from the most recent tax return; rates use a prime-rate placeholder verified monthly by TLA staff.</li>
+    <li>Ranges are capped at the amount requested and are never added together.</li>
+  </ul>
+</section>
+
+<section class="sec">
+  {{ opener(None, 'Appendix C — Revision & Change Log') }}
+  <table class="zebra"><thead><tr><th style="width:1in">Revision</th><th>Summary</th></tr></thead>
+  <tbody><tr><td>{{ rev_label }}</td><td>{{ stage|capitalize }} prepared {{ report_date|d('%B %d, %Y') }}{% if meta.analyst %} by {{ meta.analyst }}{% endif %}.</td></tr>
+  {% for c in meta.change_log %}<tr><td>—</td><td>{{ c }}</td></tr>{% endfor %}</tbody></table>
+</section>
+
+<section class="sec">
+  {{ opener(None, 'Appendix D — Scope, Limitations & Disclosures') }}
+  <h3>What this report does and does not do</h3>
+  <p><b>Included:</b> the 20-point lender-facing compliance review, business legal and identity review, commercial bureau review with correction recommendations, UCC and public-record research, licensing applicability research, banking and financial-document review, personal guarantor review, funding-goal analysis, product fit and the prioritized correction roadmap.</p>
+  <p><b>Client / third-party actions:</b> business decisions, documents, signatures, account authentication, bank or bureau communications, professional confirmations, profile corrections and lender communications remain the responsibility of the client or the relevant bank, bureau or professional unless separately engaged.</p>
+  {% for d in disclosures %}<p>{{ d }}</p>{% endfor %}
+  <p><b>TLA recommends only accurate business information, legitimate commercial activity, properly documented credit relationships, and payment activity consistent with actual business use.</b></p>
+</section>
+</body>
+</html>

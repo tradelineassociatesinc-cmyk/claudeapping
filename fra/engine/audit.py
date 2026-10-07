@@ -378,8 +378,13 @@ def rate_areas(res: AuditResult, case: Case) -> list[AreaRating]:
     def narr(ok: list[int], bad: list[int]) -> str:
         okt = ", ".join(F[n].title for n in ok if F[n].status == Status.PASS)
         badt = "; ".join(F[n].one_line for n in bad if F[n].status in (Status.AR, Status.NI))
+        pend = "; ".join(F[n].one_line for n in bad if F[n].status == Status.PEND)
         out = (f"{okt} pass. " if okt else "")
-        return out + (f"What remains: {badt}." if badt else "No material issues found.")
+        if badt:
+            out += f"What remains: {badt}."
+        if pend:
+            out += f" Pending: {pend}."
+        return out.strip() or "No material issues found."
 
     return [
         AreaRating(key="legal", name="Business Legal / Identity", status=legal, narrative=narr([1, 2, 3, 15, 17], [1, 15, 17, 20])),
@@ -429,7 +434,8 @@ def _goal_narrative(case: Case) -> str:
         return "The funding amount and use of proceeds have not been stated yet."
     uses = ", ".join(u.purpose for u in fg.uses) or "not yet documented"
     rep = fg.repayment_source or "not yet documented"
-    return f"Request of ${fg.amount_requested:,.0f}{f'–${fg.amount_minimum:,.0f}' if fg.amount_minimum and fg.amount_minimum != fg.amount_requested else ''}. Use of proceeds: {uses}. Source of repayment: {rep}."
+    rng = f"${fg.amount_minimum:,.0f}–${fg.amount_requested:,.0f}" if fg.amount_minimum and fg.amount_minimum != fg.amount_requested else f"${fg.amount_requested:,.0f}"
+    return f"Request of {rng}. Use of proceeds: {uses}. Source of repayment: {rep}."
 
 
 CONSEQUENCE = {
