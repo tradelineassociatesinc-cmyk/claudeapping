@@ -30,6 +30,18 @@ Click **Load demo** to open a fictional client ("Northwind Example LLC") and cli
 PDF generation uses WeasyPrint, which needs Pango on Linux (`apt install libpango-1.0-0 libpangoft2-1.0-0`).
 On Windows or Mac, see the WeasyPrint install guide.
 
+## Try it on GitHub (no installs)
+
+**Use the app in your browser (Codespaces):** on the repository page click **Code → Codespaces →
+Create codespace on this branch**. After about 2–3 minutes of setup the app starts by itself; if it
+doesn't open, use the **Ports** tab and open port 8501. Click **Load demo**.
+To turn on the AI reading, first add `ANTHROPIC_API_KEY` under GitHub **Settings → Codespaces →
+Secrets** and give it access to this repository. Codespaces are private to your GitHub account.
+Stop the codespace when you're done, because usage beyond the free monthly hours is billed.
+
+**Automatic tests (Actions):** every push runs the unit tests, checks that the app starts, and renders
+the demo report. Open the **Actions** tab, click a run, and download **demo-report** to see the PDF.
+
 ## Workflow (six tabs)
 
 1. **Intake**: the current website questions, plus the funding-goal questions asked first,
@@ -78,5 +90,5 @@ placeholder and the $100k card-stack ceiling.
 
 ```bash
 python -m pytest -q
-PYTHONPATH=. python scripts/render_demo.py   # renders data/out/demo.pdf + page images
+PYTHONPATH=. python scripts/render_demo.py   # renders data/out/demo.pdf (add --images for page images)
 ```

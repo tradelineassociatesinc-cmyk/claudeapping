@@ -1,0 +1,41 @@
+name: Test FRA tool
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system libraries for PDF rendering
+        run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0
+
+      - name: Install Python packages
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        run: python -m pytest -q
+
+      - name: Check the app starts
+        run: |
+          streamlit run app.py --server.headless true --server.port 8501 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8501/_stcore/health && break; sleep 2; done
+          curl -sf http://localhost:8501/_stcore/health
+
+      - name: Render the demo report
+        run: PYTHONPATH=. python scripts/render_demo.py
+
+      - name: Upload the demo report
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-report
+          path: data/out/demo.pdf
